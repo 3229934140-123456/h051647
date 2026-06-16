@@ -96,6 +96,9 @@ function processElement(oldVNode, newVNode, container, anchor) {
 function mountElement(vnode, container, anchor) {
   const el = createDOMElement(vnode)
   insertBefore(container, el, anchor)
+  if (vnode.children && vnode.children.length) {
+    mountChildren(vnode.children, el, null)
+  }
 }
 
 function patchElement(oldVNode, newVNode) {
@@ -246,6 +249,12 @@ export function patchChildren(oldVNode, newVNode, container, parentAnchor) {
   const oldChildren = oldVNode ? oldVNode.children : []
   const newChildren = newVNode.children
 
+  for (let i = 0; i < newChildren.length; i++) {
+    if (newChildren[i]) {
+      newChildren[i]._parent = newVNode
+    }
+  }
+
   const oldLen = oldChildren.length
   const newLen = newChildren.length
 
@@ -269,7 +278,7 @@ export function patchChildren(oldVNode, newVNode, container, parentAnchor) {
     if (oldLen === 0) {
       mountChildren(newChildren, container, parentAnchor)
     } else if (newLen === 0) {
-      unmountChildren(oldChildren)
+      unmountChildren(oldChildren, true)
     } else {
       const hasKey = oldChildren.some(c => c.key != null) ||
                      newChildren.some(c => c.key != null)
@@ -283,15 +292,20 @@ export function patchChildren(oldVNode, newVNode, container, parentAnchor) {
 }
 
 function mountChildren(children, container, anchor) {
-  for (let i = 0; i < children.length; i++) {
-    const child = children[i]
-    patch(null, child, container, anchor)
+  if (anchor) {
+    for (let i = children.length - 1; i >= 0; i--) {
+      patch(null, children[i], container, anchor)
+    }
+  } else {
+    for (let i = 0; i < children.length; i++) {
+      patch(null, children[i], container, anchor)
+    }
   }
 }
 
-function unmountChildren(children) {
+function unmountChildren(children, doRemove = false) {
   for (let i = children.length - 1; i >= 0; i--) {
-    unmount(children[i], null, null, false)
+    unmount(children[i], null, null, doRemove)
   }
 }
 
@@ -306,7 +320,7 @@ function patchUnkeyedChildren(oldChildren, newChildren, container, parentAnchor)
 
   if (oldChildren.length > newChildren.length) {
     for (let i = commonLength; i < oldChildren.length; i++) {
-      unmount(oldChildren[i], null, null, false)
+      unmount(oldChildren[i], null, null, true)
     }
   } else if (newChildren.length > oldChildren.length) {
     for (let i = commonLength; i < newChildren.length; i++) {
@@ -363,7 +377,7 @@ function patchKeyedChildren(oldChildren, newChildren, container, parentAnchor, o
   // 4. 新节点已全部匹配, 剩余的旧节点直接卸载
   else if (i > e2) {
     while (i <= e1) {
-      unmount(oldChildren[i], null, null, false)
+      unmount(oldChildren[i], null, null, true)
       i++
     }
   }
@@ -398,7 +412,7 @@ function patchKeyedChildren(oldChildren, newChildren, container, parentAnchor, o
       const prevChild = oldChildren[i]
 
       if (patched >= toBePatched) {
-        unmount(prevChild, null, null, false)
+        unmount(prevChild, null, null, true)
         continue
       }
 
@@ -416,7 +430,7 @@ function patchKeyedChildren(oldChildren, newChildren, container, parentAnchor, o
       }
 
       if (newIndex === undefined) {
-        unmount(prevChild, null, null, false)
+        unmount(prevChild, null, null, true)
       } else {
         newIndexToOldIndexMap[newIndex - s2] = i + 1
         if (newIndex >= maxNewIndexSoFar) {

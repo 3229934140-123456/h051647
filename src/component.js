@@ -27,7 +27,8 @@ import {
   queueJob,
   queuePostFlushCb,
   nextTick,
-  flushSync
+  flushSync,
+  invalidateJob
 } from './scheduler.js'
 
 let componentIdCounter = 0
@@ -99,12 +100,13 @@ export class Component {
   }
 
   _enqueueUpdate() {
+    if (this._unmounted) return
     if (!this._updateJob) {
       this._updateJob = () => this._update()
       this._updateJob.id = this._id
       this._updateJob.allowRecurse = true
-      queueJob(this._updateJob)
     }
+    queueJob(this._updateJob)
   }
 
   _update() {
@@ -399,6 +401,8 @@ function updateClassComponent(instance, oldVNode, newVNode) {
   const newProps = resolveProps(newVNode)
   const havePropsChanged = !shallowEqual(oldProps, newProps)
 
+  instance._parentVNode = newVNode._parent
+
   if (instance.UNSAFE_componentWillReceiveProps) {
     instance.UNSAFE_componentWillReceiveProps(newProps)
   }
@@ -482,6 +486,7 @@ function updateFunctionalComponent(instance, oldVNode, newVNode) {
   const fn = instance._fn
   const newProps = resolveProps(newVNode)
   instance.props = newProps
+  instance._parentVNode = newVNode._parent
 
   const prevSubTree = instance._subTree
   try {
@@ -509,6 +514,7 @@ function unmountComponent(vnode, parentComponent, doRemove) {
       try { instance.componentWillUnmount() } catch (e) { console.error(e) }
     }
     if (instance._updateJob) {
+      invalidateJob(instance._updateJob)
       instance._updateJob = null
     }
     if (vnode.ref) {

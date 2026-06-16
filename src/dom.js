@@ -13,22 +13,15 @@ export function createDOMElement(vnode) {
   if (isFragmentVNode(vnode)) {
     const dom = document.createDocumentFragment()
     vnode._dom = dom
-    for (const child of vnode.children) {
-      dom.appendChild(createDOMElement(child))
-    }
     return dom
   }
 
   if (isElementVNode(vnode)) {
-    const { type, props, children } = vnode
+    const { type, props } = vnode
     const dom = document.createElement(type)
     vnode._dom = dom
 
     updateProps(dom, {}, props)
-
-    for (const child of children) {
-      dom.appendChild(createDOMElement(child))
-    }
 
     if (vnode.ref) {
       setRef(vnode.ref, dom)
@@ -37,7 +30,7 @@ export function createDOMElement(vnode) {
     return dom
   }
 
-  throw new Error('Invalid VNode type for createDOMElement')
+  throw new Error('Invalid VNode type for createDOMElement: ' + (vnode && vnode.type))
 }
 
 export function updateProps(dom, oldProps, newProps) {
@@ -208,6 +201,9 @@ export function getFirstDOM(vnode) {
 
 export function getLastDOM(vnode) {
   if (!vnode) return null
+  if (vnode._anchor) {
+    return vnode._anchor
+  }
   if (vnode._dom && vnode._dom.nodeType === 11) {
     const children = vnode._dom.childNodes
     return children.length > 0 ? children[children.length - 1] : null
@@ -217,7 +213,16 @@ export function getLastDOM(vnode) {
 
 export function collectDOMSiblings(vnode, container) {
   const doms = []
-  if (vnode._dom && vnode._dom.nodeType === 11) {
+  if (vnode._anchor) {
+    const start = vnode._dom
+    const end = vnode._anchor
+    let current = start
+    while (current) {
+      doms.push(current)
+      if (current === end) break
+      current = current.nextSibling
+    }
+  } else if (vnode._dom && vnode._dom.nodeType === 11) {
     let child = getFirstDOM(vnode)
     const last = getLastDOM(vnode)
     while (child) {
