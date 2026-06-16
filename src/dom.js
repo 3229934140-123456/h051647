@@ -1,7 +1,7 @@
 // ==================== DOM 操作模块 (dom.js) ====================
 // 负责: 真实 DOM 的创建、属性/事件更新、节点的插入与移除、以及根据 VNode 获取对应的真实 DOM
 
-import { isTextVNode, isElementVNode, isFragmentVNode } from './vdom.js'
+import { isTextVNode, isElementVNode, isFragmentVNode, isComponentVNode } from './vdom.js'
 
 export function createDOMElement(vnode) {
   if (isTextVNode(vnode)) {
@@ -192,6 +192,11 @@ export function removeElement(parentDom, dom) {
 
 export function getFirstDOM(vnode) {
   if (!vnode) return null
+
+  if (isComponentVNode(vnode) && vnode._component) {
+    return getFirstDOM(vnode._component._subTree)
+  }
+
   if (vnode._dom && vnode._dom.nodeType === 11) {
     const children = vnode._dom.childNodes
     return children.length > 0 ? children[0] : null
@@ -201,6 +206,11 @@ export function getFirstDOM(vnode) {
 
 export function getLastDOM(vnode) {
   if (!vnode) return null
+
+  if (isComponentVNode(vnode) && vnode._component) {
+    return getLastDOM(vnode._component._subTree)
+  }
+
   if (vnode._anchor) {
     return vnode._anchor
   }
@@ -213,6 +223,11 @@ export function getLastDOM(vnode) {
 
 export function collectDOMSiblings(vnode, container) {
   const doms = []
+
+  if (isComponentVNode(vnode) && vnode._component) {
+    return collectDOMSiblings(vnode._component._subTree, container)
+  }
+
   if (vnode._anchor) {
     const start = vnode._dom
     const end = vnode._anchor
