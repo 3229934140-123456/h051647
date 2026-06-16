@@ -202,7 +202,7 @@
 
       increment = () => {
         for (let i = 0; i < 5; i++) {
-          this.setState({ count: this.state.count + 1 })
+          this.setState(prev => ({ count: prev.count + 1 }))
         }
       }
 
@@ -284,6 +284,16 @@
         })
       }
 
+      clearCompleted = () => {
+        this.setState({
+          todos: this.state.todos.filter(t => !t.done)
+        })
+      }
+
+      clearAll = () => {
+        this.setState({ todos: [] })
+      }
+
       handleKeyDown = (e) => {
         if (e.key === 'Enter') this.addTodo()
       }
@@ -322,7 +332,9 @@
               ref: this.inputRef
             }),
             h('button', { className: 'btn-primary', onClick: this.addTodo }, '添加'),
-            h('button', { className: 'btn-secondary', onClick: this.reverseList }, '↑↓ 反转(key优化)')
+            h('button', { className: 'btn-secondary', onClick: this.reverseList }, '↑↓ 反转(key优化)'),
+            h('button', { className: 'btn-secondary', onClick: this.clearCompleted }, '清除已完成'),
+            h('button', { className: 'btn-danger', onClick: this.clearAll }, '清空全部')
           ),
           h('ul', { className: 'todo-list' },
             todos.map(todo =>
@@ -360,17 +372,17 @@
 
       log(type, message) {
         const time = new Date().toLocaleTimeString() + '.' + String(new Date().getMilliseconds()).padStart(3, '0')
-        this.logs.push({ type, message, time })
+        const entry = { type, message, time }
+        this.logs.push(entry)
         if (this.logs.length > 50) this.logs.shift()
-        this.updateLogDisplay()
-      }
 
-      updateLogDisplay() {
-        nextTick(() => {
-          if (this.logRef.current) {
-            this.logRef.current.scrollTop = this.logRef.current.scrollHeight
-          }
-        })
+        if (this.logRef.current) {
+          const div = document.createElement('div')
+          div.className = `log-entry log-${type}`
+          div.textContent = `[${time}] ${message}`
+          this.logRef.current.appendChild(div)
+          this.logRef.current.scrollTop = this.logRef.current.scrollHeight
+        }
       }
 
       componentWillMount() { this.log('mount', 'componentWillMount → 即将挂载') }
@@ -405,17 +417,6 @@
       toggleChild = () => this.setState(s => ({ show: !s.show }))
 
       render() {
-        const LogPanel = () => h('div', {
-          className: 'lifecycle-log',
-          ref: this.logRef
-        },
-          ...this.logs.map(log =>
-            h('div', { key: log.time + log.message, className: `log-entry log-${log.type}` },
-              `[${log.time}] ${log.message}`
-            )
-          )
-        )
-
         return h(Fragment, null,
           h('div', { className: 'btn-group', style: { marginBottom: '16px' } },
             h('button', { className: 'btn-primary', onClick: this.inc }, `当前值: ${this.state.count} (点击更新)`),
@@ -426,7 +427,16 @@
           h('div', { style: { marginTop: '16px' } },
             h('div', { style: { fontSize: '13px', color: '#666', marginBottom: '8px' } },
               '生命周期日志 (最新在底部):'),
-            LogPanel()
+            h('div', {
+              className: 'lifecycle-log',
+              ref: this.logRef
+            },
+              ...this.logs.map(log =>
+                h('div', { key: log.time + log.message, className: `log-entry log-${log.type}` },
+                  `[${log.time}] ${log.message}`
+                )
+              )
+            )
           )
         )
       }
@@ -456,17 +466,34 @@
     }
 
     // ==================== 示例 4: 函数式组件 + 用户列表 ====================
-    function UserCard({ user, onSelect, selected }) {
+    function UserCard({ user, onSelect, selected, onRemove }) {
       return h('div', {
         className: 'user-card',
         style: {
           cursor: 'pointer',
           outline: selected ? '3px solid #f9e2af' : 'none',
           transform: selected ? 'translateY(-2px)' : 'none',
-          transition: 'all 0.2s'
+          transition: 'all 0.2s',
+          position: 'relative'
         },
         onClick: () => onSelect(user.id)
       },
+        h('button', {
+          className: 'btn-danger',
+          style: {
+            position: 'absolute',
+            top: '8px',
+            right: '8px',
+            padding: '4px 10px',
+            fontSize: '12px',
+            background: 'rgba(233, 69, 96, 0.9)',
+            zIndex: 1
+          },
+          onClick: (e) => {
+            e.stopPropagation()
+            onRemove && onRemove(user.id)
+          }
+        }, '删除'),
         h('div', { className: 'user-name' }, user.name),
         h('div', { className: 'user-email' }, user.email),
         h('div', {
@@ -526,6 +553,17 @@
         this.setState({ users: [newUser, ...this.state.users] })
       }
 
+      removeUser = (id) => {
+        this.setState({
+          users: this.state.users.filter(u => u.id !== id),
+          selectedId: this.state.selectedId === id ? null : this.state.selectedId
+        })
+      }
+
+      clearUsers = () => {
+        this.setState({ users: [], selectedId: null })
+      }
+
       toggleSort = () => {
         const order = this.state.sortOrder === 'asc' ? 'desc' : 'asc'
         const sorted = [...this.state.users].sort((a, b) => {
@@ -543,7 +581,8 @@
             h('button', { className: 'btn-primary', onClick: this.addUser }, '＋ 添加用户(到开头)'),
             h('button', { className: 'btn-secondary', onClick: this.shuffle }, '🎲 随机打乱'),
             h('button', { className: 'btn-secondary', onClick: this.toggleSort },
-              `⇅ 按ID排序 (${this.state.sortOrder === 'asc' ? '升序' : '降序'})`)
+              `⇅ 按ID排序 (${this.state.sortOrder === 'asc' ? '升序' : '降序'})`),
+            h('button', { className: 'btn-danger', onClick: this.clearUsers }, '🗑 清空列表')
           ),
           selected && h('div', {
             style: {
@@ -563,7 +602,8 @@
                 key: user.id,
                 user,
                 selected: selectedId === user.id,
-                onSelect: this.selectUser
+                onSelect: this.selectUser,
+                onRemove: this.removeUser
               })
             )
           )

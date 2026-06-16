@@ -474,7 +474,9 @@ function patchKeyedChildren(oldChildren, newChildren, container, parentAnchor, o
 
 function move(vnode, container, anchor) {
   if (isComponentVNode(vnode) && vnode._component) {
-    vnode._component.subTree && move(vnode._component.subTree, container, anchor)
+    if (vnode._component._subTree) {
+      move(vnode._component._subTree, container, anchor)
+    }
     return
   }
 
@@ -539,7 +541,7 @@ export function unmount(vnode, parentComponent, parentSuspense, doRemove = false
 
 function getNextSibling(vnode) {
   if (isComponentVNode(vnode)) {
-    return vnode._component ? getNextSibling(vnode._component.subTree) : null
+    return vnode._component ? getNextSibling(vnode._component._subTree) : null
   }
   if (isFragmentVNode(vnode) && vnode._anchor) {
     return vnode._anchor.nextSibling
