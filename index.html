@@ -1,0 +1,682 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MinReact - 虚拟DOM框架演示</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      padding: 24px;
+      background: #f5f7fa;
+      color: #333;
+    }
+    .app {
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    h1 {
+      font-size: 28px;
+      margin-bottom: 8px;
+      color: #1a1a2e;
+    }
+    .subtitle {
+      color: #666;
+      margin-bottom: 32px;
+    }
+    .section {
+      background: #fff;
+      border-radius: 12px;
+      padding: 24px;
+      margin-bottom: 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+    }
+    .section-title {
+      font-size: 18px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      color: #16213e;
+      border-left: 4px solid #0f3460;
+      padding-left: 12px;
+    }
+    .counter {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+    }
+    .counter-value {
+      font-size: 48px;
+      font-weight: 700;
+      min-width: 100px;
+      text-align: center;
+      color: #0f3460;
+      transition: transform 0.2s;
+    }
+    .counter-value.pulse {
+      transform: scale(1.1);
+    }
+    button {
+      padding: 10px 20px;
+      border: none;
+      border-radius: 8px;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .btn-primary {
+      background: #0f3460;
+      color: #fff;
+    }
+    .btn-primary:hover { background: #16213e; }
+    .btn-secondary {
+      background: #e8e8e8;
+      color: #333;
+    }
+    .btn-secondary:hover { background: #d0d0d0; }
+    .btn-danger {
+      background: #e94560;
+      color: #fff;
+    }
+    .btn-danger:hover { background: #c73650; }
+    .btn-group { display: flex; gap: 8px; flex-wrap: wrap; }
+
+    .todo-list { list-style: none; }
+    .todo-item {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 12px;
+      border-radius: 8px;
+      margin-bottom: 8px;
+      background: #f8f9fa;
+      transition: all 0.2s;
+    }
+    .todo-item:hover { background: #eef1f5; }
+    .todo-item.done .todo-text {
+      text-decoration: line-through;
+      color: #999;
+    }
+    .todo-text { flex: 1; }
+    .todo-input {
+      flex: 1;
+      padding: 10px 14px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 14px;
+      outline: none;
+      transition: border-color 0.2s;
+    }
+    .todo-input:focus { border-color: #0f3460; }
+    .add-todo {
+      display: flex;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .user-card {
+      padding: 16px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: #fff;
+      margin-bottom: 12px;
+    }
+    .user-name { font-size: 18px; font-weight: 600; margin-bottom: 4px; }
+    .user-email { font-size: 13px; opacity: 0.9; }
+    .user-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 12px; }
+
+    .lifecycle-log {
+      background: #1e1e2e;
+      color: #a6e3a1;
+      padding: 16px;
+      border-radius: 8px;
+      font-family: 'Consolas', 'Monaco', monospace;
+      font-size: 12px;
+      max-height: 200px;
+      overflow-y: auto;
+      line-height: 1.6;
+    }
+    .log-entry {
+      padding: 2px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .log-mount { color: #89b4fa; }
+    .log-update { color: #f9e2af; }
+    .log-unmount { color: #f38ba8; }
+
+    .stats {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+      gap: 12px;
+    }
+    .stat-card {
+      padding: 16px;
+      border-radius: 10px;
+      background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);
+      color: #fff;
+      text-align: center;
+    }
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+    }
+    .stat-label {
+      font-size: 12px;
+      opacity: 0.9;
+      margin-top: 4px;
+    }
+    .stat-card:nth-child(2) { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+    .stat-card:nth-child(3) { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); color: #0d3b32; }
+    .stat-card:nth-child(4) { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); color: #5a4100; }
+
+    .checkbox {
+      width: 20px;
+      height: 20px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+
+  <script type="module">
+    import {
+      createElement as h,
+      Component,
+      PureComponent,
+      Fragment,
+      createRef,
+      render,
+      nextTick,
+      flushSync
+    } from './src/index.js'
+
+    // ==================== 示例 1: 计数器 (演示状态更新与批量调度) ====================
+    class Counter extends Component {
+      constructor(props) {
+        super(props)
+        this.state = { count: 0 }
+      }
+
+      increment = () => {
+        for (let i = 0; i < 5; i++) {
+          this.setState({ count: this.state.count + 1 })
+        }
+      }
+
+      decrement = () => {
+        this.setState(prev => ({ count: prev.count - 1 }))
+      }
+
+      reset = () => {
+        this.setState({ count: 0 })
+      }
+
+      render() {
+        const { count } = this.state
+        return h('div', { className: 'counter' },
+          h('button', { className: 'btn-secondary', onClick: this.decrement }, '− 减1'),
+          h('div', {
+            className: 'counter-value' + (count % 10 === 0 && count > 0 ? ' pulse' : ''),
+            style: { color: count < 0 ? '#e94560' : '#0f3460' }
+          }, count),
+          h('button', { className: 'btn-primary', onClick: this.increment }, '连续+5 (批量)'),
+          h('button', { className: 'btn-secondary', onClick: this.reset }, '重置')
+        )
+      }
+    }
+
+    // ==================== 示例 2: Todo列表 (演示列表key优化diff) ====================
+    class TodoList extends Component {
+      constructor(props) {
+        super(props)
+        this.state = {
+          todos: [
+            { id: 1, text: '学习虚拟DOM原理', done: true },
+            { id: 2, text: '理解Diff算法', done: true },
+            { id: 3, text: '掌握key的作用', done: false },
+            { id: 4, text: '实现组件系统', done: false }
+          ],
+          input: ''
+        }
+        this.inputRef = createRef()
+      }
+
+      handleInput = (e) => {
+        this.setState({ input: e.target.value })
+      }
+
+      addTodo = () => {
+        const text = this.state.input.trim()
+        if (!text) return
+        const newTodo = {
+          id: Date.now(),
+          text,
+          done: false
+        }
+        this.setState({
+          todos: [...this.state.todos, newTodo],
+          input: ''
+        }, () => {
+          this.inputRef.current && this.inputRef.current.focus()
+        })
+      }
+
+      toggleTodo = (id) => {
+        this.setState({
+          todos: this.state.todos.map(t =>
+            t.id === id ? { ...t, done: !t.done } : t
+          )
+        })
+      }
+
+      removeTodo = (id) => {
+        this.setState({
+          todos: this.state.todos.filter(t => t.id !== id)
+        })
+      }
+
+      reverseList = () => {
+        this.setState({
+          todos: [...this.state.todos].reverse()
+        })
+      }
+
+      handleKeyDown = (e) => {
+        if (e.key === 'Enter') this.addTodo()
+      }
+
+      render() {
+        const { todos, input } = this.state
+        const doneCount = todos.filter(t => t.done).length
+        const totalCount = todos.length
+
+        return h(Fragment, null,
+          h('div', { className: 'stats', style: { marginBottom: '16px' } },
+            h('div', { className: 'stat-card' },
+              h('div', { className: 'stat-value' }, totalCount),
+              h('div', { className: 'stat-label' }, '总任务')
+            ),
+            h('div', { className: 'stat-card' },
+              h('div', { className: 'stat-value' }, doneCount),
+              h('div', { className: 'stat-label' }, '已完成')
+            ),
+            h('div', { className: 'stat-card' },
+              h('div', { className: 'stat-value' }, totalCount - doneCount),
+              h('div', { className: 'stat-label' }, '待完成')
+            ),
+            h('div', { className: 'stat-card' },
+              h('div', { className: 'stat-value' }, totalCount ? Math.round(doneCount / totalCount * 100) : 0 + '%'),
+              h('div', { className: 'stat-label' }, '完成率')
+            )
+          ),
+          h('div', { className: 'add-todo' },
+            h('input', {
+              className: 'todo-input',
+              placeholder: '输入新任务,按回车添加...',
+              value: input,
+              onInput: this.handleInput,
+              onKeyDown: this.handleKeyDown,
+              ref: this.inputRef
+            }),
+            h('button', { className: 'btn-primary', onClick: this.addTodo }, '添加'),
+            h('button', { className: 'btn-secondary', onClick: this.reverseList }, '↑↓ 反转(key优化)')
+          ),
+          h('ul', { className: 'todo-list' },
+            todos.map(todo =>
+              h('li', {
+                key: todo.id,
+                className: 'todo-item' + (todo.done ? ' done' : '')
+              },
+                h('input', {
+                  type: 'checkbox',
+                  className: 'checkbox',
+                  checked: todo.done,
+                  onChange: () => this.toggleTodo(todo.id)
+                }),
+                h('span', { className: 'todo-text' }, todo.text),
+                h('button', {
+                  className: 'btn-danger',
+                  style: { padding: '6px 12px', fontSize: '12px' },
+                  onClick: () => this.removeTodo(todo.id)
+                }, '删除')
+              )
+            )
+          )
+        )
+      }
+    }
+
+    // ==================== 示例 3: 生命周期演示组件 ====================
+    class LifecycleDemo extends Component {
+      constructor(props) {
+        super(props)
+        this.state = { count: 0, show: true }
+        this.logs = []
+        this.logRef = createRef()
+      }
+
+      log(type, message) {
+        const time = new Date().toLocaleTimeString() + '.' + String(new Date().getMilliseconds()).padStart(3, '0')
+        this.logs.push({ type, message, time })
+        if (this.logs.length > 50) this.logs.shift()
+        this.updateLogDisplay()
+      }
+
+      updateLogDisplay() {
+        nextTick(() => {
+          if (this.logRef.current) {
+            this.logRef.current.scrollTop = this.logRef.current.scrollHeight
+          }
+        })
+      }
+
+      componentWillMount() { this.log('mount', 'componentWillMount → 即将挂载') }
+      componentDidMount() { this.log('mount', 'componentDidMount  ✓ 挂载完成') }
+
+      componentWillReceiveProps(nextProps) {
+        this.log('update', `componentWillReceiveProps → props变化: label="${nextProps.label}"`)
+      }
+
+      shouldComponentUpdate(nextProps, nextState) {
+        this.log('update', 'shouldComponentUpdate → 判断是否更新')
+        return true
+      }
+
+      componentWillUpdate(nextProps, nextState) {
+        this.log('update', `componentWillUpdate → 即将更新 (count=${nextState.count})`)
+      }
+
+      getSnapshotBeforeUpdate(prevProps, prevState) {
+        this.log('update', `getSnapshotBeforeUpdate → 获取快照 (prev count=${prevState.count})`)
+        return { prevCount: prevState.count }
+      }
+
+      componentDidUpdate(prevProps, prevState, snapshot) {
+        const snapInfo = snapshot ? `, 快照: prev=${snapshot.prevCount}` : ''
+        this.log('update', `componentDidUpdate  ✓ 更新完成${snapInfo}`)
+      }
+
+      componentWillUnmount() { this.log('unmount', 'componentWillUnmount → 卸载中...') }
+
+      inc = () => this.setState(s => ({ count: s.count + 1 }))
+      toggleChild = () => this.setState(s => ({ show: !s.show }))
+
+      render() {
+        const LogPanel = () => h('div', {
+          className: 'lifecycle-log',
+          ref: this.logRef
+        },
+          ...this.logs.map(log =>
+            h('div', { key: log.time + log.message, className: `log-entry log-${log.type}` },
+              `[${log.time}] ${log.message}`
+            )
+          )
+        )
+
+        return h(Fragment, null,
+          h('div', { className: 'btn-group', style: { marginBottom: '16px' } },
+            h('button', { className: 'btn-primary', onClick: this.inc }, `当前值: ${this.state.count} (点击更新)`),
+            h('button', { className: 'btn-secondary', onClick: this.toggleChild },
+              this.state.show ? '✕ 卸载子组件' : '✓ 挂载子组件')
+          ),
+          this.state.show && h(ChildComponent, { label: this.props.label, count: this.state.count }),
+          h('div', { style: { marginTop: '16px' } },
+            h('div', { style: { fontSize: '13px', color: '#666', marginBottom: '8px' } },
+              '生命周期日志 (最新在底部):'),
+            LogPanel()
+          )
+        )
+      }
+    }
+
+    class ChildComponent extends PureComponent {
+      componentWillMount() { console.log('子组件: componentWillMount') }
+      componentDidMount() { console.log('子组件: componentDidMount') }
+      componentWillUnmount() { console.log('子组件: componentWillUnmount') }
+
+      render() {
+        const { label, count } = this.props
+        return h('div', {
+          style: {
+            padding: '16px',
+            borderRadius: '10px',
+            background: 'linear-gradient(135deg, #a8edea 0%, #fed6e3 100%)',
+            color: '#333'
+          }
+        },
+          h('div', { style: { fontWeight: '600', marginBottom: '8px' } }, '子组件 (PureComponent)'),
+          h('div', null, `Label: ${label} | Count: ${count}`),
+          h('div', { style: { fontSize: '12px', color: '#666', marginTop: '8px' } },
+            'PureComponent会进行浅比较,props未变则跳过渲染')
+        )
+      }
+    }
+
+    // ==================== 示例 4: 函数式组件 + 用户列表 ====================
+    function UserCard({ user, onSelect, selected }) {
+      return h('div', {
+        className: 'user-card',
+        style: {
+          cursor: 'pointer',
+          outline: selected ? '3px solid #f9e2af' : 'none',
+          transform: selected ? 'translateY(-2px)' : 'none',
+          transition: 'all 0.2s'
+        },
+        onClick: () => onSelect(user.id)
+      },
+        h('div', { className: 'user-name' }, user.name),
+        h('div', { className: 'user-email' }, user.email),
+        h('div', {
+          style: {
+            marginTop: '8px',
+            fontSize: '11px',
+            opacity: 0.8,
+            padding: '2px 8px',
+            background: 'rgba(255,255,255,0.2)',
+            borderRadius: '4px',
+            display: 'inline-block'
+          }
+        }, user.role)
+      )
+    }
+
+    class UserList extends Component {
+      constructor(props) {
+        super(props)
+        this.state = {
+          users: [
+            { id: 1, name: '张三', email: 'zhangsan@example.com', role: '前端工程师' },
+            { id: 2, name: '李四', email: 'lisi@example.com', role: '后端工程师' },
+            { id: 3, name: '王五', email: 'wangwu@example.com', role: '产品经理' },
+            { id: 4, name: '赵六', email: 'zhaoliu@example.com', role: 'UI设计师' },
+            { id: 5, name: '孙七', email: 'sunqi@example.com', role: '运维工程师' },
+            { id: 6, name: '周八', email: 'zhouba@example.com', role: '测试工程师' }
+          ],
+          selectedId: null,
+          sortOrder: 'asc'
+        }
+      }
+
+      selectUser = (id) => {
+        this.setState({ selectedId: this.state.selectedId === id ? null : id })
+      }
+
+      shuffle = () => {
+        const arr = [...this.state.users]
+        for (let i = arr.length - 1; i > 0; i--) {
+          const j = Math.floor(Math.random() * (i + 1))
+          ;[arr[i], arr[j]] = [arr[j], arr[i]]
+        }
+        this.setState({ users: arr })
+      }
+
+      addUser = () => {
+        const names = ['吴九', '郑十', '刘一', '陈二', '杨三']
+        const roles = ['架构师', '数据分析师', '运营经理', 'HR', 'QA']
+        const idx = this.state.users.length
+        const newUser = {
+          id: Date.now(),
+          name: names[idx % names.length],
+          email: `user${idx + 1}@example.com`,
+          role: roles[idx % roles.length]
+        }
+        this.setState({ users: [newUser, ...this.state.users] })
+      }
+
+      toggleSort = () => {
+        const order = this.state.sortOrder === 'asc' ? 'desc' : 'asc'
+        const sorted = [...this.state.users].sort((a, b) => {
+          return order === 'asc' ? a.id - b.id : b.id - a.id
+        })
+        this.setState({ users: sorted, sortOrder: order })
+      }
+
+      render() {
+        const { users, selectedId } = this.state
+        const selected = users.find(u => u.id === selectedId)
+
+        return h(Fragment, null,
+          h('div', { className: 'btn-group', style: { marginBottom: '16px' } },
+            h('button', { className: 'btn-primary', onClick: this.addUser }, '＋ 添加用户(到开头)'),
+            h('button', { className: 'btn-secondary', onClick: this.shuffle }, '🎲 随机打乱'),
+            h('button', { className: 'btn-secondary', onClick: this.toggleSort },
+              `⇅ 按ID排序 (${this.state.sortOrder === 'asc' ? '升序' : '降序'})`)
+          ),
+          selected && h('div', {
+            style: {
+              padding: '12px 16px',
+              marginBottom: '16px',
+              background: '#e8f5e9',
+              borderRadius: '8px',
+              color: '#2e7d32',
+              fontSize: '14px'
+            }
+          },
+            `✓ 已选中: ${selected.name} (${selected.email})`
+          ),
+          h('div', { className: 'user-list' },
+            users.map(user =>
+              h(UserCard, {
+                key: user.id,
+                user,
+                selected: selectedId === user.id,
+                onSelect: this.selectUser
+              })
+            )
+          )
+        )
+      }
+    }
+
+    // ==================== 根组件 App ====================
+    class App extends Component {
+      constructor(props) {
+        super(props)
+        this.state = { label: '演示' }
+      }
+
+      changeLabel = () => {
+        const labels = ['演示', 'Demo', '展示', 'Example', '测试']
+        const idx = labels.indexOf(this.state.label)
+        this.setState({ label: labels[(idx + 1) % labels.length] })
+      }
+
+      render() {
+        return h('div', { className: 'app' },
+          h('h1', null, '🎯 MinReact 虚拟DOM框架'),
+          h('p', { className: 'subtitle' },
+            '精简版React实现: 虚拟DOM · Diff算法 · 组件系统 · 批量调度'),
+
+          h('div', { className: 'section' },
+            h('div', { className: 'section-title' },
+              '示例1: 计数器 (演示 setState 批量调度)'),
+            h('p', {
+              style: { fontSize: '13px', color: '#666', marginBottom: '16px' }
+            },
+              '点击"连续+5"按钮,内部循环5次调用 setState,但调度器会将它们合并为1次渲染'),
+            h(Counter)
+          ),
+
+          h('div', { className: 'section' },
+            h('div', { className: 'section-title' },
+              '示例2: Todo列表 (演示 key 对列表Diff的优化)'),
+            h('p', {
+              style: { fontSize: '13px', color: '#666', marginBottom: '16px' }
+            },
+              '使用唯一id作为key,点击"反转"按钮时,Diff算法通过key识别相同节点,仅移动DOM而非重建'),
+            h(TodoList)
+          ),
+
+          h('div', { className: 'section' },
+            h('div', { className: 'section-title' },
+              '示例3: 组件生命周期 (演示挂载/更新/卸载)'),
+            h('div', {
+              style: { display: 'flex', gap: '12px', marginBottom: '12px' }
+            },
+              h('button', { className: 'btn-secondary', onClick: this.changeLabel },
+                `改变label → 当前: "${this.state.label}"`)
+            ),
+            h(LifecycleDemo, { label: this.state.label })
+          ),
+
+          h('div', { className: 'section' },
+            h('div', { className: 'section-title' },
+              '示例4: 用户列表 (函数式组件 + 纯组件 + 复杂列表操作)'),
+            h('p', {
+              style: { fontSize: '13px', color: '#666', marginBottom: '16px' }
+            },
+              'UserCard是函数式组件,基于key进行高效的列表diff,添加/打乱/排序均为最小DOM操作'),
+            h(UserList)
+          ),
+
+          h('div', { className: 'section' },
+            h('div', { className: 'section-title' }, '模块架构总览'),
+            h('div', {
+              style: {
+                display: 'grid',
+                gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
+                gap: '12px',
+                fontSize: '13px'
+              }
+            },
+              ...[
+                ['vdom.js', '虚拟节点', 'createElement、VNode结构、normalizeChildren、类型判断'],
+                ['dom.js', 'DOM操作', 'createDOMElement、updateProps、节点插入/移除、ref处理'],
+                ['diff.js', 'Diff算法', 'patch/reconcile、双端比较、LIS移动优化、key复用'],
+                ['scheduler.js', '调度器', 'queueJob、微任务批量、nextTick、pre/post回调'],
+                ['component.js', '组件系统', 'Component基类、setState、生命周期、PureComponent'],
+                ['index.js', '入口整合', 'render()、unmountAt()、对外统一API']
+              ].map(([file, name, desc]) =>
+                h('div', {
+                  key: file,
+                  style: {
+                    padding: '14px',
+                    borderRadius: '8px',
+                    background: '#f8f9fa',
+                    borderLeft: '3px solid #0f3460'
+                  }
+                },
+                  h('div', {
+                    style: { fontWeight: '600', color: '#0f3460', marginBottom: '4px' }
+                  }, `📁 ${file}`),
+                  h('div', { style: { fontSize: '12px', color: '#555', marginBottom: '6px' } }, name),
+                  h('div', { style: { fontSize: '12px', color: '#888' } }, desc)
+                )
+              )
+            )
+          )
+        )
+      }
+    }
+
+    const root = document.getElementById('root')
+    render(h(App), root)
+
+    console.log('%c🎯 MinReact 框架已加载!', 'color:#0f3460;font-size:16px;font-weight:bold;')
+    console.log('源文件位于 src/ 目录,共6个核心模块')
+  </script>
+</body>
+</html>
