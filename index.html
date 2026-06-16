@@ -176,6 +176,126 @@
       height: 20px;
       cursor: pointer;
     }
+
+    .filter-bar {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    .filter-input {
+      padding: 8px 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      min-width: 180px;
+    }
+    .filter-input:focus { border-color: #0f3460; }
+    .filter-select {
+      padding: 8px 12px;
+      border: 2px solid #e0e0e0;
+      border-radius: 8px;
+      font-size: 13px;
+      outline: none;
+      background: #fff;
+      cursor: pointer;
+    }
+    .filter-select:focus { border-color: #0f3460; }
+
+    .batch-bar {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+      padding: 10px 14px;
+      background: #fff8e1;
+      border-radius: 8px;
+      margin-bottom: 14px;
+      font-size: 13px;
+      flex-wrap: wrap;
+    }
+    .batch-bar .batch-count {
+      font-weight: 600;
+      color: #e65100;
+    }
+
+    .add-form {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      padding: 14px;
+      background: #f0f4ff;
+      border-radius: 10px;
+    }
+    .add-form .form-field {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+    .add-form .form-field label {
+      font-size: 11px;
+      color: #666;
+      font-weight: 500;
+    }
+    .add-form .form-field input,
+    .add-form .form-field select {
+      padding: 8px 10px;
+      border: 2px solid #d0d7e8;
+      border-radius: 6px;
+      font-size: 13px;
+      outline: none;
+    }
+    .add-form .form-field input:focus,
+    .add-form .form-field select:focus {
+      border-color: #0f3460;
+    }
+    .add-form .form-error {
+      font-size: 11px;
+      color: #e94560;
+      min-height: 16px;
+    }
+
+    .user-card.batch-mode {
+      cursor: default;
+    }
+    .user-card .card-check {
+      position: absolute;
+      top: 8px;
+      left: 8px;
+      width: 18px;
+      height: 18px;
+    }
+    .user-card .delete-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      padding: 3px 8px;
+      font-size: 11px;
+      background: rgba(233, 69, 96, 0.85);
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      z-index: 1;
+    }
+    .user-card .delete-btn:hover { background: #c73650; }
+
+    .panel-stats {
+      display: flex;
+      gap: 16px;
+      font-size: 13px;
+      color: #555;
+      margin-bottom: 14px;
+      flex-wrap: wrap;
+    }
+    .panel-stats span {
+      background: #eef1f5;
+      padding: 4px 10px;
+      border-radius: 6px;
+    }
   </style>
 </head>
 <body>
@@ -465,35 +585,22 @@
       }
     }
 
-    // ==================== 示例 4: 函数式组件 + 用户列表 ====================
-    function UserCard({ user, onSelect, selected, onRemove }) {
-      return h('div', {
-        className: 'user-card',
-        style: {
-          cursor: 'pointer',
-          outline: selected ? '3px solid #f9e2af' : 'none',
-          transform: selected ? 'translateY(-2px)' : 'none',
-          transition: 'all 0.2s',
-          position: 'relative'
-        },
-        onClick: () => onSelect(user.id)
-      },
-        h('button', {
-          className: 'btn-danger',
-          style: {
-            position: 'absolute',
-            top: '8px',
-            right: '8px',
-            padding: '4px 10px',
-            fontSize: '12px',
-            background: 'rgba(233, 69, 96, 0.9)',
-            zIndex: 1
-          },
-          onClick: (e) => {
-            e.stopPropagation()
-            onRemove && onRemove(user.id)
-          }
-        }, '删除'),
+    // ==================== 示例 4: 函数式组件 + 用户管理面板 ====================
+    const ALL_ROLES = ['前端工程师', '后端工程师', '产品经理', 'UI设计师', '运维工程师', '测试工程师', '架构师', '数据分析师', '运营经理', 'HR', 'QA']
+
+    function UserCard({ user, selected, batchMode, checked, onSelect, onCheck, onRemove }) {
+      const children = []
+
+      if (batchMode) {
+        children.push(h('input', {
+          type: 'checkbox',
+          className: 'card-check',
+          checked: checked || false,
+          onChange: () => onCheck && onCheck(user.id)
+        }))
+      }
+
+      children.push(
         h('div', { className: 'user-name' }, user.name),
         h('div', { className: 'user-email' }, user.email),
         h('div', {
@@ -508,6 +615,32 @@
           }
         }, user.role)
       )
+
+      if (!batchMode) {
+        children.push(h('button', {
+          className: 'delete-btn',
+          onClick: (e) => { e.stopPropagation(); onRemove && onRemove(user.id) }
+        }, '删除'))
+      }
+
+      const cardStyle = {
+        cursor: batchMode ? 'default' : 'pointer',
+        outline: selected ? '3px solid #f9e2af' : (checked ? '3px solid #a5d6a7' : 'none'),
+        transform: selected ? 'translateY(-2px)' : 'none',
+        transition: 'all 0.2s',
+        position: 'relative',
+        paddingRight: batchMode ? undefined : '52px'
+      }
+
+      const clickHandler = batchMode
+        ? () => onCheck && onCheck(user.id)
+        : () => onSelect && onSelect(user.id)
+
+      return h('div', {
+        className: 'user-card' + (batchMode ? ' batch-mode' : ''),
+        style: cardStyle,
+        onClick: clickHandler
+      }, ...children)
     }
 
     class UserList extends Component {
@@ -523,45 +656,108 @@
             { id: 6, name: '周八', email: 'zhouba@example.com', role: '测试工程师' }
           ],
           selectedId: null,
-          sortOrder: 'asc'
+          sortOrder: 'asc',
+          search: '',
+          roleFilter: '',
+          batchMode: false,
+          checkedIds: {},
+          showForm: false,
+          formName: '',
+          formEmail: '',
+          formRole: '前端工程师',
+          formError: ''
         }
+      }
+
+      getFilteredUsers() {
+        const { users, search, roleFilter } = this.state
+        let result = users
+        if (search.trim()) {
+          const q = search.trim().toLowerCase()
+          result = result.filter(u =>
+            u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q)
+          )
+        }
+        if (roleFilter) {
+          result = result.filter(u => u.role === roleFilter)
+        }
+        return result
       }
 
       selectUser = (id) => {
         this.setState({ selectedId: this.state.selectedId === id ? null : id })
       }
 
-      shuffle = () => {
-        const arr = [...this.state.users]
-        for (let i = arr.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1))
-          ;[arr[i], arr[j]] = [arr[j], arr[i]]
-        }
-        this.setState({ users: arr })
-      }
-
-      addUser = () => {
-        const names = ['吴九', '郑十', '刘一', '陈二', '杨三']
-        const roles = ['架构师', '数据分析师', '运营经理', 'HR', 'QA']
-        const idx = this.state.users.length
-        const newUser = {
-          id: Date.now(),
-          name: names[idx % names.length],
-          email: `user${idx + 1}@example.com`,
-          role: roles[idx % roles.length]
-        }
-        this.setState({ users: [newUser, ...this.state.users] })
-      }
-
-      removeUser = (id) => {
-        this.setState({
-          users: this.state.users.filter(u => u.id !== id),
-          selectedId: this.state.selectedId === id ? null : this.state.selectedId
+      toggleCheck = (id) => {
+        this.setState(prev => {
+          const next = { ...prev.checkedIds }
+          if (next[id]) { delete next[id] } else { next[id] = true }
+          return { checkedIds: next }
         })
       }
 
+      toggleBatchMode = () => {
+        this.setState(prev => ({
+          batchMode: !prev.batchMode,
+          checkedIds: {},
+          selectedId: prev.batchMode ? prev.selectedId : null
+        }))
+      }
+
+      selectAll = () => {
+        const visible = this.getFilteredUsers()
+        const all = {}
+        visible.forEach(u => { all[u.id] = true })
+        this.setState({ checkedIds: all })
+      }
+
+      deselectAll = () => {
+        this.setState({ checkedIds: {} })
+      }
+
+      batchDelete = () => {
+        const ids = Object.keys(this.state.checkedIds).map(Number)
+        if (ids.length === 0) return
+        this.setState(prev => ({
+          users: prev.users.filter(u => !ids.includes(u.id)),
+          selectedId: ids.includes(prev.selectedId) ? null : prev.selectedId,
+          checkedIds: {}
+        }))
+      }
+
+      batchChangeRole = (newRole) => {
+        if (!newRole) return
+        const ids = Object.keys(this.state.checkedIds).map(Number)
+        if (ids.length === 0) return
+        this.setState(prev => ({
+          users: prev.users.map(u => ids.includes(u.id) ? { ...u, role: newRole } : u),
+          checkedIds: {}
+        }))
+      }
+
+      shuffle = () => {
+        const arr = [...this.state.users]
+        const original = arr.map(u => u.id).join(',')
+        let attempts = 0
+        do {
+          for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1))
+            ;[arr[i], arr[j]] = [arr[j], arr[i]]
+          }
+          attempts++
+        } while (arr.map(u => u.id).join(',') === original && attempts < 20 && arr.length > 1)
+        this.setState({ users: arr })
+      }
+
+      removeUser = (id) => {
+        this.setState(prev => ({
+          users: prev.users.filter(u => u.id !== id),
+          selectedId: prev.selectedId === id ? null : prev.selectedId
+        }))
+      }
+
       clearUsers = () => {
-        this.setState({ users: [], selectedId: null })
+        this.setState({ users: [], selectedId: null, checkedIds: {} })
       }
 
       toggleSort = () => {
@@ -572,40 +768,201 @@
         this.setState({ users: sorted, sortOrder: order })
       }
 
+      toggleForm = () => {
+        this.setState(prev => ({
+          showForm: !prev.showForm,
+          formName: '', formEmail: '', formRole: '前端工程师', formError: ''
+        }))
+      }
+
+      handleFormInput = (field, value) => {
+        this.setState({ [field]: value, formError: '' })
+      }
+
+      submitForm = () => {
+        const { formName, formEmail, formRole, users, sortOrder } = this.state
+        const name = formName.trim()
+        const email = formEmail.trim()
+
+        if (!name) {
+          this.setState({ formError: '姓名不能为空' })
+          return
+        }
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+          this.setState({ formError: '邮箱格式不正确' })
+          return
+        }
+
+        const newUser = { id: Date.now(), name, email, role: formRole }
+
+        const insertIdx = users.findIndex(u =>
+          sortOrder === 'asc' ? u.id > newUser.id : u.id < newUser.id
+        )
+        let newUsers
+        if (insertIdx === -1) {
+          newUsers = [...users, newUser]
+        } else {
+          newUsers = [...users.slice(0, insertIdx), newUser, ...users.slice(insertIdx)]
+        }
+
+        this.setState({
+          users: newUsers,
+          showForm: false,
+          formName: '', formEmail: '', formRole: '前端工程师', formError: ''
+        })
+      }
+
       render() {
-        const { users, selectedId } = this.state
+        const {
+          users, selectedId, sortOrder, search, roleFilter,
+          batchMode, checkedIds, showForm,
+          formName, formEmail, formRole, formError
+        } = this.state
+
+        const visible = this.getFilteredUsers()
         const selected = users.find(u => u.id === selectedId)
+        const checkedCount = Object.keys(checkedIds).length
+        const uniqueRoles = [...new Set(users.map(u => u.role))]
 
         return h(Fragment, null,
-          h('div', { className: 'btn-group', style: { marginBottom: '16px' } },
-            h('button', { className: 'btn-primary', onClick: this.addUser }, '＋ 添加用户(到开头)'),
+          h('div', { className: 'filter-bar' },
+            h('input', {
+              className: 'filter-input',
+              type: 'text',
+              placeholder: '搜索姓名或邮箱...',
+              value: search,
+              onInput: (e) => this.setState({ search: e.target.value })
+            }),
+            h('select', {
+              className: 'filter-select',
+              value: roleFilter,
+              onChange: (e) => this.setState({ roleFilter: e.target.value })
+            },
+              h('option', { value: '' }, '全部角色'),
+              ...uniqueRoles.map(r =>
+                h('option', { key: r, value: r }, r)
+              )
+            ),
+            (search || roleFilter) && h('button', {
+              className: 'btn-secondary',
+              style: { fontSize: '12px', padding: '8px 12px' },
+              onClick: () => this.setState({ search: '', roleFilter: '' })
+            }, '清除筛选')
+          ),
+
+          h('div', { className: 'btn-group', style: { marginBottom: '14px' } },
+            h('button', {
+              className: 'btn-primary',
+              style: { fontSize: '13px' },
+              onClick: this.toggleForm
+            }, showForm ? '收起表单' : '＋ 添加用户'),
             h('button', { className: 'btn-secondary', onClick: this.shuffle }, '🎲 随机打乱'),
             h('button', { className: 'btn-secondary', onClick: this.toggleSort },
-              `⇅ 按ID排序 (${this.state.sortOrder === 'asc' ? '升序' : '降序'})`),
-            h('button', { className: 'btn-danger', onClick: this.clearUsers }, '🗑 清空列表')
+              `⇅ 按ID排序 (${sortOrder === 'asc' ? '升序' : '降序'})`),
+            h('button', {
+              className: batchMode ? 'btn-primary' : 'btn-secondary',
+              onClick: this.toggleBatchMode
+            }, batchMode ? '退出批量模式' : '☑ 批量选择'),
+            h('button', { className: 'btn-danger', onClick: this.clearUsers }, '🗑 清空')
           ),
-          selected && h('div', {
-            style: {
-              padding: '12px 16px',
-              marginBottom: '16px',
-              background: '#e8f5e9',
-              borderRadius: '8px',
-              color: '#2e7d32',
-              fontSize: '14px'
-            }
-          },
-            `✓ 已选中: ${selected.name} (${selected.email})`
+
+          showForm && h('div', { className: 'add-form' },
+            h('div', { className: 'form-field' },
+              h('label', null, '姓名'),
+              h('input', {
+                type: 'text',
+                value: formName,
+                onInput: (e) => this.handleFormInput('formName', e.target.value),
+                placeholder: '必填'
+              })
+            ),
+            h('div', { className: 'form-field' },
+              h('label', null, '邮箱'),
+              h('input', {
+                type: 'text',
+                value: formEmail,
+                onInput: (e) => this.handleFormInput('formEmail', e.target.value),
+                placeholder: 'user@example.com'
+              })
+            ),
+            h('div', { className: 'form-field' },
+              h('label', null, '角色'),
+              h('select', {
+                value: formRole,
+                onChange: (e) => this.handleFormInput('formRole', e.target.value)
+              },
+                ...ALL_ROLES.map(r =>
+                  h('option', { key: r, value: r }, r)
+                )
+              )
+            ),
+            h('div', { className: 'form-field' },
+              h('label', null, '\u00a0'),
+              h('button', { className: 'btn-primary', style: { fontSize: '13px' }, onClick: this.submitForm }, '确认添加')
+            ),
+            formError && h('div', { className: 'form-error' }, formError)
           ),
+
+          batchMode && h('div', { className: 'batch-bar' },
+            h('span', null, '已勾选 ', h('span', { className: 'batch-count' }, checkedCount), ' 项'),
+            h('button', {
+              className: 'btn-secondary',
+              style: { fontSize: '12px', padding: '6px 12px' },
+              onClick: this.selectAll
+            }, '全选当前'),
+            h('button', {
+              className: 'btn-secondary',
+              style: { fontSize: '12px', padding: '6px 12px' },
+              onClick: this.deselectAll
+            }, '取消全选'),
+            h('button', {
+              className: 'btn-danger',
+              style: { fontSize: '12px', padding: '6px 12px' },
+              onClick: this.batchDelete,
+              disabled: checkedCount === 0
+            }, '批量删除'),
+            h('select', {
+              className: 'filter-select',
+              style: { fontSize: '12px', padding: '6px 10px' },
+              value: '',
+              onChange: (e) => { if (e.target.value) this.batchChangeRole(e.target.value) }
+            },
+              h('option', { value: '' }, '批量改角色...'),
+              ...ALL_ROLES.map(r =>
+                h('option', { key: r, value: r }, r)
+              )
+            )
+          ),
+
+          h('div', { className: 'panel-stats' },
+            h('span', null, `总计 ${users.length} 人`),
+            h('span', null, `当前显示 ${visible.length} 人`),
+            selected && h('span', { style: { background: '#e8f5e9', color: '#2e7d32' } },
+              `✓ 选中: ${selected.name}`)
+          ),
+
           h('div', { className: 'user-list' },
-            users.map(user =>
+            visible.map(user =>
               h(UserCard, {
                 key: user.id,
                 user,
                 selected: selectedId === user.id,
+                batchMode,
+                checked: !!checkedIds[user.id],
                 onSelect: this.selectUser,
+                onCheck: this.toggleCheck,
                 onRemove: this.removeUser
               })
-            )
+            ),
+            visible.length === 0 && h('div', {
+              style: {
+                gridColumn: '1 / -1',
+                textAlign: 'center',
+                padding: '32px',
+                color: '#999',
+                fontSize: '14px'
+              }
+            }, '没有匹配的用户')
           )
         )
       }
@@ -664,11 +1021,11 @@
 
           h('div', { className: 'section' },
             h('div', { className: 'section-title' },
-              '示例4: 用户列表 (函数式组件 + 纯组件 + 复杂列表操作)'),
+              '示例4: 用户管理面板 (搜索筛选 · 批量操作 · 添加表单)'),
             h('p', {
               style: { fontSize: '13px', color: '#666', marginBottom: '16px' }
             },
-              'UserCard是函数式组件,基于key进行高效的列表diff,添加/打乱/排序均为最小DOM操作'),
+              '搜索/筛选即时过滤,批量模式多选操作,表单验证新增,排序/打乱基于key高效diff'),
             h(UserList)
           ),
 
